@@ -1,103 +1,216 @@
-const dotenv = require('dotenv')
-const express = require('express')
-const mongodb = require('mongodb')
+const dotenv = require("dotenv");
+const express = require("express");
+const mongodb = require("mongodb");
 
-const { getPutBodyIsAllowed } = require('./util')
+const { getPutBodyIsAllowed } = require("./util");
 
-dotenv.config()
+dotenv.config();
 
-const app = express()
-app.use(express.json())
+const app = express();
+app.use(express.json());
 
-const port = process.env.PORT || 3000
+const port = process.env.PORT || 3000;
 
-const uri = process.env.DATABASE_URI
+const uri = process.env.DATABASE_URI;
 
-app.post('/api/books', function(request, response) {
-  // Make this work!
-})
+app.post("/api/books", function (request, response) {
+  const client = new mongodb.MongoClient(uri);
 
-app.delete('/api/books/:id', function(request, response) {
+  client.connect(function () {
+    const db = client.db("literature");
+    const collection = db.collection("books");
+
+    const {
+      title,
+      author,
+      author_birth_year,
+      author_death_year,
+      url,
+    } = request.query;
+
+    const book = {};
+    if (request.query.title) {
+      book["title"] = title;
+    } else {
+      response.sendStatus(400);
+    }
+    if (request.query.author) {
+      book["author"] = author;
+    } else {
+      response.sendStatus(400);
+    }
+    if (request.query.author_birth_year) {
+      book["author_birth_year"] = Number(author_birth_year);
+    } else {
+      response.sendStatus(400);
+    }
+    if (request.query.author_death_year) {
+      book["author_death_year"] = Number(author_death_year);
+    } else {
+      response.sendStatus(400);
+    }
+    if (request.query.url) {
+      book["url"] = url;
+    } else {
+      response.sendStatus(400);
+    }
+
+    collection.insertOne(book, (error, book) => {
+      response.send(error || book);
+      client.close();
+    });
+  });
+});
+
+app.delete("/api/books/:id", function (request, response) {
   // Make this work, too!
-})
+  const client = new mongodb.MongoClient(uri);
 
-app.put('/api/books/:id', function(request, response) {
+  client.connect(function () {
+    const db = client.db("literature");
+    const collection = db.collection("books");
+    let id;
+    try {
+      id = new mongodb.ObjectID(request.params.id);
+    } catch (error) {
+      response.sendStatus(400);
+      return;
+    }
+
+    const searchObject = { _id: id };
+
+    collection.deleteOne(searchObject, function (error, book) {
+      if (!searchObject) {
+        response.sendStatus(400);
+      } else if (error) {
+        response.sendStatus(400);
+      } else {
+        response.sendStatus(204);
+      }
+      client.close();
+    });
+  });
+});
+
+app.put("/api/books/:id", function (request, response) {
   // Also make this work!
-})
+  const client = new mongodb.MongoClient(uri);
+  let id;
+  try {
+    id = new mongodb.ObjectID(request.params.id);
+  } catch (error) {
+    response.sendStatus(400);
+    return;
+  }
+  client.connect(function () {
+    const db = client.db("literature");
+    const collection = db.collection("books");
 
-app.get('/api/books', function(request, response) {
-  const client = new mongodb.MongoClient(uri)
+    const searchObject = { _id: id };
 
-  client.connect(function() {
-    const db = client.db('literature')
-    const collection = db.collection('books')
+    const {
+      title,
+      author,
+      author_birth_year,
+      author_death_year,
+      url,
+    } = request.body;
 
-    const searchObject = {}
+    const updateObject = {
+      $set: {
+        title: title,
+        author: author,
+        author_birth_year: Number(author_birth_year),
+        author_death_year: Number(author_death_year),
+        url: url,
+      },
+    };
+
+    const options = { returnOriginal: false };
+
+    collection.findOneAndUpdate(searchObject, updateObject, options, function (
+      error,
+      result
+    ) {
+      response.send(error || result.value);
+      client.close();
+    });
+  });
+});
+
+app.get("/api/books", function (request, response) {
+  const client = new mongodb.MongoClient(uri);
+
+  client.connect(function () {
+    const db = client.db("literature");
+    const collection = db.collection("books");
+
+    const searchObject = {};
 
     if (request.query.title) {
-      searchObject.title = request.query.title
+      searchObject.title = request.query.title;
     }
 
     if (request.query.author) {
-      searchObject.author = request.query.author
+      searchObject.author = request.query.author;
     }
 
-    collection.find(searchObject).toArray(function(error, books) {
-      response.send(error || books)
-      client.close()
-    })
-  })
-})
+    collection.find(searchObject).toArray(function (error, books) {
+      response.send(error || books);
+      client.close();
+    });
+  });
+});
 
-app.get('/api/books/:id', function(request, response) {
-  const client = new mongodb.MongoClient(uri)
+app.get("/api/books/:id", function (request, response) {
+  const client = new mongodb.MongoClient(uri);
 
-  let id
+  let id;
   try {
-    id = new mongodb.ObjectID(request.params.id)
+    id = new mongodb.ObjectID(request.params.id);
   } catch (error) {
-    response.sendStatus(400)
-    return
+    response.sendStatus(400);
+    return;
   }
 
-  client.connect(function() {
-    const db = client.db('literature')
-    const collection = db.collection('books')
+  client.connect(function () {
+    const db = client.db("literature");
+    const collection = db.collection("books");
 
-    const searchObject = { _id: id }
+    const searchObject = { _id: id };
 
-    collection.findOne(searchObject, function(error, book) {
+    collection.findOne(searchObject, function (error, book) {
       if (!book) {
-        response.sendStatus(404)
+        response.sendStatus(404);
       } else {
-        response.send(error || book)
+        response.send(error || book);
       }
 
-      client.close()
-    })
-  })
-})
+      client.close();
+    });
+  });
+});
 
-app.get('/', function(request, response) {
-  response.sendFile(__dirname + '/index.html')
-})
+app.get("/", function (request, response) {
+  response.sendFile(__dirname + "/index.html");
+});
 
-app.get('/books/new', function(request, response) {
-  response.sendFile(__dirname + '/new-book.html')
-})
+app.get("/books/new", function (request, response) {
+  response.sendFile(__dirname + "/new-book.html");
+});
 
-app.get('/books/:id', function(request, response) {
-  response.sendFile(__dirname + '/book.html')
-})
+app.get("/books/:id", function (request, response) {
+  response.sendFile(__dirname + "/book.html");
+});
 
-app.get('/books/:id/edit', function(request, response) {
-  response.sendFile(__dirname + '/edit-book.html')
-})
+app.get("/books/:id/edit", function (request, response) {
+  response.sendFile(__dirname + "/edit-book.html");
+});
 
-app.get('/authors/:name', function(request, response) {
-  response.sendFile(__dirname + '/author.html')
-})
+app.get("/authors/:name", function (request, response) {
+  response.sendFile(__dirname + "/author.html");
+});
 
-app.listen(port || 3000, function() {
-  console.log(`Running at \`http://localhost:${port}\`...`)
-})
+app.listen(port || 5000, function () {
+  console.log(`Running at \`http://localhost:${port}\`...`);
+});
