@@ -132,7 +132,11 @@ app.put("/api/books/:id", function (request, response) {
       error,
       result
     ) {
-      response.send(error || result.value);
+      if (!updateObject) {
+        response.sendStatus(422);
+      }
+      console.log(searchObject);
+      response.send(error || result.value || 404);
       client.close();
     });
   });
