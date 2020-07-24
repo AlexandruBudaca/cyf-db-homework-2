@@ -9,7 +9,7 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 
 const uri = process.env.DATABASE_URI;
 
@@ -80,13 +80,15 @@ app.delete("/api/books/:id", function (request, response) {
     const searchObject = { _id: id };
 
     collection.deleteOne(searchObject, function (error, book) {
-      if (!searchObject) {
+      if (error) {
         response.sendStatus(400);
-      } else if (error) {
+      }
+      if (book.deletedCount === 0) {
         response.sendStatus(400);
       } else {
-        response.sendStatus(204);
+        response.send({ message: "Book deleted successfully!" });
       }
+
       client.close();
     });
   });
